@@ -54,8 +54,7 @@ This installs:
 
 ### 2. Configure `postgresql.conf`
 
-Add the extension to `shared_preload_libraries` — **this is mandatory** because the
-extension installs a server-level hook at startup:
+Add the extension to `shared_preload_libraries` — **this is mandatory**
 
 ```ini
 # postgresql.conf
