@@ -1,8 +1,6 @@
 # advanced_password_check
 
 **Password policy enforcement extension for SynxDB4 (PostgreSQL 14-based MPP)**
-
-- Based on PostgreSQL `check_password_hook` API (PostgreSQL License)
 - Built for SynxDB (Apache Cloudberry / PostgreSQL 14-based MPP)
 
 ---
@@ -25,9 +23,12 @@ Special characters are any printable non-alphanumeric characters, including:
 
 ## Requirements
 
-- SynxDB or PostgreSQL 14.x
-- `postgresql14-devel` (or equivalent) package for building
+- SynxDB
 - Superuser privileges for installation and policy configuration
+- devtoolset-10-gcc
+- devtoolset-10-gcc-c++ 
+- openssl-devel
+
 
 ---
 
