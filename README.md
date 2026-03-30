@@ -1,6 +1,6 @@
 # advanced_password_check
 
-**Password policy enforcement extension for SynxDB (PostgreSQL 14-based MPP)**
+**Password policy enforcement extension for SynxDB4 (PostgreSQL 14-based MPP)**
 
 - Based on PostgreSQL `check_password_hook` API (PostgreSQL License)
 - Built for SynxDB (Apache Cloudberry / PostgreSQL 14-based MPP)
