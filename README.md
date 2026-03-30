@@ -228,14 +228,11 @@ advanced_password_check/
 ├── advanced_password_check.control     # Extension metadata
 ├── advanced_password_check--1.0.sql    # SQL installation script + policy view
 ├── Makefile                            # Build script (PGXS)
-├── README.md                           # This file
-└── test/
-    └── sql/
-        └── advanced_password_check_test.sql  # Regression tests
+└── README.md                           # This file
+
 ```
 
 ---
 
 ## License
-
-PostgreSQL License (same as PostgreSQL itself).
+PostgreSQL License
