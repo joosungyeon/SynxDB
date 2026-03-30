@@ -77,30 +77,23 @@ shared_preload_libraries = 'other_lib,advanced_password_check'
 
 ### 3. Restart SynxDB
 
-```bash
-pg_ctl restart -D $PGDATA
-# or
-systemctl restart synxdb
-```
+OS CLi...
+gpadmin $ gpstop -afr
 
 ### 4. Install the extension in the target database
 
-```sql
+SQL ...
 -- Connect as superuser
-CREATE EXTENSION advanced_password_check;
-```
+userdb =# CREATE EXTENSION advanced_password_check;
 
----
 
 ## Usage
 
 ### Inspecting the current policy
 
-```sql
-SELECT name, setting, short_desc FROM advanced_password_check_policy;
-```
+SQL ...
+userdb =# SELECT name, setting, short_desc FROM advanced_password_check_policy;
 
-```
               name                         | setting | ...
 -------------------------------------------+---------+
  advanced_password_check.min_char_diff     | 4       |
@@ -113,30 +106,29 @@ SELECT name, setting, short_desc FROM advanced_password_check_policy;
 
 ### Changing policy at runtime (superuser only)
 
-```sql
+SQL ...
 -- Increase minimum length
-SET advanced_password_check.min_length = 12;
+userdb =# SET advanced_password_check.min_length = 12;
 
 -- Persist the change across restarts
-ALTER SYSTEM SET advanced_password_check.min_length = 12;
-SELECT pg_reload_conf();
+userdb =# ALTER SYSTEM SET advanced_password_check.min_length = 12;
+userdb =# SELECT pg_reload_conf();
 
 -- Disable the char-diff check entirely
-SET advanced_password_check.min_char_diff = 0;
-```
+userdb =# SET advanced_password_check.min_char_diff = 0;
 
 ### Setting passwords (enforced by policy)
 
-```sql
+SQL ...
 -- This will be checked against the active policy:
-CREATE ROLE myuser PASSWORD 'MySecure@Pass99';
+userdb =# CREATE ROLE myuser PASSWORD 'MySecure@Pass99';
 
-ALTER ROLE myuser PASSWORD 'NewPass!!2024xZ';
-```
+userdb =# ALTER ROLE myuser PASSWORD 'NewPass!!2024xZ';
+
 
 ### Example rejection messages
 
-```
+
 ERROR:  password is too short
 DETAIL: Password must be at least 9 characters long. Current length: 6.
 
