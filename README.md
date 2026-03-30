@@ -2,9 +2,8 @@
 
 **Password policy enforcement extension for SynxDB (PostgreSQL 14-based MPP)**
 
-Inspired by the `passwordcheck` and Greenplum 7's `advanced_password_check` extensions,
-this extension enforces configurable password complexity rules whenever a role's password
-is created or changed via `CREATE ROLE`, `ALTER ROLE`, or `\password`.
+- Based on PostgreSQL `check_password_hook` API (PostgreSQL License)
+- Built for SynxDB (Apache Cloudberry / PostgreSQL 14-based MPP)
 
 ---
 
