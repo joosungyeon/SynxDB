@@ -77,21 +77,22 @@ shared_preload_libraries = 'other_lib,advanced_password_check'
 
 ### 3. Restart SynxDB
 
-OS CLi...
+``` cli
 gpadmin $ gpstop -afr
+```
 
 ### 4. Install the extension in the target database
 
-SQL ...
+``` sql
 -- Connect as superuser
 userdb =# CREATE EXTENSION advanced_password_check;
-
+```
 
 ## Usage
 
 ### Inspecting the current policy
 
-SQL ...
+``` sql
 userdb =# SELECT name, setting, short_desc FROM advanced_password_check_policy;
 
               name                         | setting | ...
@@ -106,7 +107,7 @@ userdb =# SELECT name, setting, short_desc FROM advanced_password_check_policy;
 
 ### Changing policy at runtime (superuser only)
 
-SQL ...
+``` sql
 -- Increase minimum length
 userdb =# SET advanced_password_check.min_length = 12;
 
@@ -116,19 +117,20 @@ userdb =# SELECT pg_reload_conf();
 
 -- Disable the char-diff check entirely
 userdb =# SET advanced_password_check.min_char_diff = 0;
+```
 
 ### Setting passwords (enforced by policy)
 
-SQL ...
+``` sql
 -- This will be checked against the active policy:
 userdb =# CREATE ROLE myuser PASSWORD 'MySecure@Pass99';
 
 userdb =# ALTER ROLE myuser PASSWORD 'NewPass!!2024xZ';
-
+```
 
 ### Example rejection messages
 
-
+``` sql
 ERROR:  password is too short
 DETAIL: Password must be at least 9 characters long. Current length: 6.
 
