@@ -23,6 +23,15 @@ REGRESS_OPTS = --inputdir=test
 PG_CONFIG   ?= pg_config
 PGXS        := $(shell $(PG_CONFIG) --pgxs)
 
-CC = gcc -m64
-
 include $(PGXS)
+
+# Strip GCC flags unsupported by older system GCC
+CFLAGS := $(filter-out -Wimplicit-fallthrough=3,      $(CFLAGS))
+CFLAGS := $(filter-out -Wcast-function-type,           $(CFLAGS))
+CFLAGS := $(filter-out -Werror=implicit-fallthrough=3, $(CFLAGS))
+CFLAGS := $(filter-out -Wno-format-truncation,         $(CFLAGS))
+CFLAGS := $(filter-out -Wno-stringop-truncation,       $(CFLAGS))
+CFLAGS := $(filter-out -Wno-unused-but-set-variable,   $(CFLAGS))
+
+# dblink 헤더 경로 추가
+CFLAGS += -I$(shell $(PG_CONFIG) --includedir-server)/extension
