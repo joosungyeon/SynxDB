@@ -1,238 +1,74 @@
 # advanced_password_check
 
-**Password policy enforcement extension for SynxDB4 (PostgreSQL 14-based MPP)**
-- Built for SynxDB (Apache Cloudberry / PostgreSQL 14-based MPP)
+SynxDB (PostgreSQL 14 기반 MPP) 용 패스워드 정책 enforcement extension
 
----
+## 기능
 
-## Features
-
-| Policy Rule | GUC Parameter | Default |
+| 정책 | GUC 파라미터 | 기본값 |
 |---|---|---|
-| Minimum total length | `advanced_password_check.min_length` | 9 |
-| Minimum uppercase letters | `advanced_password_check.min_uppercase` | 2 |
-| Minimum lowercase letters | `advanced_password_check.min_lowercase` | 2 |
-| Minimum digit characters | `advanced_password_check.min_numbers` | 2 |
-| Minimum special characters | `advanced_password_check.min_special` | 2 |
-| Minimum chars different from previous password | `advanced_password_check.min_char_diff` | 4 |
+| 최소 길이 | `advanced_password_check.min_length` | 9 |
+| 최소 대문자 | `advanced_password_check.min_uppercase` | 2 |
+| 최소 소문자 | `advanced_password_check.min_lowercase` | 2 |
+| 최소 숫자 | `advanced_password_check.min_numbers` | 2 |
+| 최소 특수문자 | `advanced_password_check.min_special` | 2 |
+| 현재 패스워드 재사용 방지 | `advanced_password_check.no_reuse` | true |
 
-Special characters are any printable non-alphanumeric characters, including:
-`! @ # $ % ^ & * ( ) - _ = + [ ] { } ; : ' " , . < > ? / \ | \` ~`
+## 동작 방식
 
----
+- `CREATE ROLE` / `ALTER ROLE ... PASSWORD` 실행 시 `check_password_hook` 발동
+- 평문 패스워드를 받아 복잡도 정책 검사
+- `get_role_password()` + `plain_crypt_verify()` 로 현재 저장된 패스워드와 비교
+  - SCRAM-SHA-256이어도 저장된 salt를 재사용해 정확히 동일 여부 판별
+  - 평문 저장 없이 안전하게 비교 가능
 
-## Requirements
+## 빌드 환경
 
-- SynxDB
-- Superuser privileges for installation and policy configuration
-- devtoolset-10-gcc
-- devtoolset-10-gcc-c++ 
-- openssl-devel
+- SynxDB 4.x / PostgreSQL 14
+- GCC 10+ (devtoolset-10 이상 권장)
+- `openssl-devel` 패키지
 
-
----
-
-## Installation
-
-### 1. Build and install
+## 설치
 
 ```bash
-# Clone or extract the extension source
-cd advanced_password_check
+# 1. 빌드
+make PG_CONFIG=/usr/local/synxdb4/bin/pg_config
 
-# Point to your PostgreSQL/SynxDB pg_config if not on PATH
-export PG_CONFIG=/path/to/synxdb/bin/pg_config
+# 2. 설치 (코디네이터)
+make install PG_CONFIG=/usr/local/synxdb4/bin/pg_config
 
-make
-make install
-```
+# 3. 세그먼트 노드 배포
+gpscp -f /data/staging/hostfile advanced_password_check.so \
+    =:/usr/local/synxdb4/lib/postgresql/
 
-This installs:
-- `$libdir/advanced_password_check.so` — shared library
-- `$sharedir/extension/advanced_password_check.control`
-- `$sharedir/extension/advanced_password_check--1.0.sql`
-
-### 2. Configure `postgresql.conf`
-
-Add the extension to `shared_preload_libraries` — **this is mandatory**
-
-```ini
-# postgresql.conf
+# 4. postgresql.conf 설정
 shared_preload_libraries = 'advanced_password_check'
-
-# Optional: set policy (can also be set at runtime by superusers)
 advanced_password_check.min_length    = 9
 advanced_password_check.min_uppercase = 2
 advanced_password_check.min_lowercase = 2
 advanced_password_check.min_numbers   = 2
 advanced_password_check.min_special   = 2
-advanced_password_check.min_char_diff = 4
+advanced_password_check.no_reuse      = true
+
+# 5. 재시작
+gpstop -r -a
+
+# 6. Extension 설치
+psql -d <dbname> -c "CREATE EXTENSION advanced_password_check;"
 ```
 
-If you already have other libraries in `shared_preload_libraries`, append with a comma:
-
-```ini
-shared_preload_libraries = 'other_lib,advanced_password_check'
-```
-
-### 3. Restart SynxDB
-
-``` cli
-gpadmin $ gpstop -afr
-```
-
-### 4. Install the extension in the target database
-
-``` sql
--- Connect as superuser
-userdb =# CREATE EXTENSION advanced_password_check;
-```
-
-## Usage
-
-### Inspecting the current policy
-
-``` sql
-userdb =# SELECT name, setting, short_desc FROM advanced_password_check_policy;
-
-              name                         | setting | ...
--------------------------------------------+---------+
- advanced_password_check.min_char_diff     | 4       |
- advanced_password_check.min_length        | 9       |
- advanced_password_check.min_lowercase     | 2       |
- advanced_password_check.min_numbers       | 2       |
- advanced_password_check.min_special       | 2       |
- advanced_password_check.min_uppercase     | 2       |
-```
-
-### Changing policy at runtime (superuser only)
-
-``` sql
--- Increase minimum length
-userdb =# SET advanced_password_check.min_length = 12;
-
--- Persist the change across restarts
-userdb =# ALTER SYSTEM SET advanced_password_check.min_length = 12;
-userdb =# SELECT pg_reload_conf();
-
--- Disable the char-diff check entirely
-userdb =# SET advanced_password_check.min_char_diff = 0;
-```
-
-### Setting passwords (enforced by policy)
-
-``` sql
--- This will be checked against the active policy:
-userdb =# CREATE ROLE myuser PASSWORD 'MySecure@Pass99';
-
-userdb =# ALTER ROLE myuser PASSWORD 'NewPass!!2024xZ';
-```
-
-### Example rejection messages
-
-``` sql
-ERROR:  password is too short
-DETAIL: Password must be at least 9 characters long. Current length: 6.
-
-ERROR:  password does not contain enough uppercase letters
-DETAIL: Password must contain at least 2 uppercase letter(s). Found: 1.
-
-ERROR:  password does not contain enough special characters
-DETAIL: Password must contain at least 2 special character(s) (e.g. !@#$%^&*). Found: 0.
-
-ERROR:  new password is too similar to the previous password
-DETAIL: At least 4 character(s) must differ from the previous password. Found 1 different character(s).
-```
-
----
-
-## Important Notes
-
-### Pre-hashed passwords
-
-If a client sends a password already hashed (MD5 or SCRAM), the extension **cannot**
-inspect its character composition and will emit a `NOTICE` then skip policy enforcement.
-This is consistent with Greenplum's behavior.
-
-To ensure policy enforcement always applies, configure clients to send plaintext passwords
-and let the server handle hashing:
-
-```ini
-# postgresql.conf
-password_encryption = scram-sha-256   # recommended
-```
-
-### Superuser bypass
-
-By default, the extension does **not** bypass checks for superusers (the relevant code
-is present but commented out). To allow superusers to set any password, uncomment this
-block in `advanced_password_check.c`:
-
-```c
-/* if (superuser()) return; */
-```
-
-### min_char_diff and hashed passwords
-
-The `min_char_diff` check compares the new plaintext password against the stored
-`pg_authid.rolpassword` value. When the stored password is hashed (SCRAM/MD5), the
-comparison is between plaintext and the hash string — this still prevents trivially
-incremental changes but is not a true plaintext-to-plaintext comparison. For full
-effectiveness, consider using a password history table (see "Extending the extension").
-
-### MPP / Coordinator-only execution
-
-In a SynxDB MPP cluster, password DDL executes only on the coordinator node.
-The extension hook fires on the coordinator. No changes are needed for segment nodes,
-but `shared_preload_libraries` should be set consistently on all nodes.
-
----
-
-## Running Regression Tests
-
-```bash
-make installcheck
-```
-
----
-
-## Extending the Extension
-
-### Password history table
-
-To maintain a true history of previous passwords and enforce `min_char_diff` against
-multiple previous passwords, create a history table and extend the C hook:
+## 정책 변경
 
 ```sql
-CREATE TABLE password_history (
-    rolname   TEXT NOT NULL,
-    pass_hash TEXT NOT NULL,
-    changed_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
+-- 즉시 적용
+ALTER SYSTEM SET advanced_password_check.min_length = 12;
+SELECT pg_reload_conf();
+
+-- 현재 정책 확인
+SELECT name, setting FROM advanced_password_check_policy;
 ```
 
-Then in the C hook, query this table (via SPI) before accepting the new password.
+## Credits
 
-### Custom special character sets
-
-Modify `is_special_char()` in `advanced_password_check.c` to restrict or expand
-which characters are considered "special" based on your organization's policy.
-
----
-
-## File Structure
-
-```
-advanced_password_check/
-├── advanced_password_check.c           # Main extension source (C)
-├── advanced_password_check.control     # Extension metadata
-├── advanced_password_check--1.0.sql    # SQL installation script + policy view
-├── Makefile                            # Build script (PGXS)
-└── README.md                           # This file
-
-```
-
----
-
-## License
-PostgreSQL License
+- Inspired by Greenplum `advanced_password_check`
+- Based on PostgreSQL `check_password_hook` API
+- Built for SynxDB (Apache Cloudberry / PostgreSQL 14-based MPP)
